@@ -109,7 +109,7 @@ client.on('message', async (message) => {
     let watchChannel = client.channels.get(watchChannelId);
 
     if (!watchChannel || !(watchChannel instanceof Discord.TextChannel)) {
-      message.channel.send('❌ The channel to watch does not exist.');
+      message.channel.send('❌ I do not see the channel you want me to watch.');
       return;
     }
 
@@ -118,11 +118,11 @@ client.on('message', async (message) => {
     try {
       watchMessage = await watchChannel.fetchMessage(tokens[2]);
       if (!watchMessage) {
-        message.channel.send('❌ The message to watch does not exist.');
+        message.channel.send('❌ I do not see the message you want me to watch.');
         return;
       }
     } catch (err) {
-      message.channel.send('❌ The message to watch does not exist.');
+      message.channel.send('❌ I do not see the message you want me to watch.');
       return;
     }
 
@@ -130,7 +130,7 @@ client.on('message', async (message) => {
 
     // Parse the channel to notify.
     let notifyChannelId;
-    let notifyChannelMatches = /<#(.+)>/.exec(tokens[1]);
+    let notifyChannelMatches = /<#(.+)>/.exec(tokens[4]);
     if (notifyChannelMatches && notifyChannelMatches[1]) {
       notifyChannelId = notifyChannelMatches[1];
     } else {
@@ -140,7 +140,7 @@ client.on('message', async (message) => {
     let notifyChannel = client.channels.get(notifyChannelId);
 
     if (!notifyChannel || !(notifyChannel instanceof Discord.TextChannel)) {
-      message.channel.send('❌ The channel to notify does not exist.');
+      message.channel.send('❌ I do not see the channel you want me to notify.');
       return;
     }
 
@@ -148,13 +148,19 @@ client.on('message', async (message) => {
     let notification = tokens.slice(5).join(' ');
 
     // Persist to settings.
-    settings.watch[watchMessage.id] = {
-      watchChannel: watchChannel,
-      watchMessage: watchMessage,
+    if (!(watchMessage.id in settings.watch)) {
+      settings.watch[watchMessage.id] = {
+        watchChannel: watchChannel,
+        watchMessage: watchMessage,
+        watchReactions: [],
+      };
+    }
+
+    settings.watch[watchMessage.id].watchReactions.push({
       watchReaction: watchReaction,
       notifyChannel: notifyChannel,
       notification: notification,
-    };
+    });
 
     message.channel.send(`✅ I will now be keeping on eye on the ${watchChannel} channel ` +
                          `to see if anyone reacts with a ${watchReaction} on the message with id ${tokens[2]}.\n` +
@@ -174,16 +180,25 @@ client.on('messageReactionAdd', async (messageReaction, user) => {
 
   let watchSettings = settings.watch[messageReaction.message.id];
 
-  // Ignore if it's the wrong reaction.
-  if (`<:${messageReaction.emoji.identifier}>` !== watchSettings.watchReaction &&
-      messageReaction.emoji.name !== watchSettings.watchReaction) {
+  // Get the setting for this reaction.
+  let notifyChannel;
+  let notification;
+  for (let watchReactionSetting of watchSettings.watchReactions) {
+    if (`<:${messageReaction.emoji.identifier}>` === watchReactionSetting.watchReaction ||
+        messageReaction.emoji.name === watchReactionSetting.watchReaction) {
+      notifyChannel = watchReactionSetting.notifyChannel;
+      notification = watchReactionSetting.notification;
+      break;
+    }
+  }
+
+  if (!notifyChannel || !notification) {
     return;
   }
 
   // Send out the notification.
-  let notification = watchSettings.notification.replace(/{{user}}/g, user);
-
-  watchSettings.notifyChannel.send(notification);
+  notification = notification.replace(/{{user}}/g, user);
+  notifyChannel.send(notification);
 });
 
 client.login(process.env.LOGIN_TOKEN);
