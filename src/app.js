@@ -1,4 +1,5 @@
 const Discord = require('discord.js');
+const _ = require('lodash');
 require('dotenv').config();
 
 const client = new Discord.Client();
@@ -45,6 +46,7 @@ client.on('message', (message) => {
 
   // Tokenize the message.
   let tokens = message.content.trim().split(' ');
+  tokens = _.map(tokens, _.trim);
 
   // Ignore if no tokens.
   if (tokens.length < 1 || !tokens[0]) {
@@ -52,7 +54,7 @@ client.on('message', (message) => {
   }
 
   // Discard first token if it is the mention.
-  if (tokens[0].trim() === `<@${client.user.id}>`) {
+  if (tokens[0] === `<@${client.user.id}>`) {
     tokens.shift();
 
     // Ignore if no more tokens afterwards.
@@ -62,14 +64,25 @@ client.on('message', (message) => {
   }
 
   // Discard prefix if it is used.
-  if (tokens[0].trim().startsWith(settings.prefix)) {
+  if (tokens[0].startsWith(settings.prefix)) {
     tokens[0] = tokens[0].substr(settings.prefix.length);
   }
 
-  // Respond to pings.
-  if (tokens[0].trim() === 'ping') {
+  // Handle commands.
+  if (tokens[0] === 'ping') {
     pong(message);
+  } else if (tokens[0] === 'prefix') {
+    if (!tokens[1] || tokens[1].length < 1) {
+      message.channel.send('❌ Cannot use this prefix.');
+      return;
+    }
+
+    settings.prefix = tokens[1];
+
+    message.channel.send(`✅ Prefix changed to \`${tokens[1]}\`.`);
   }
+
+
 });
 
 client.login(process.env.LOGIN_TOKEN);
