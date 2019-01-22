@@ -16,10 +16,25 @@ client.on('ready', () => {
   console.log('I am ready!');
 });
 
+/**
+ * Respond to a ping message with a 'pong' and the one-way average latency.
+ *
+ * @param {Message} message the ping message.
+ */
+function pong(message) {
+  message.channel.send(`pong ${Math.round(client.ping)}ms`);
+}
+
 // Create an event listener for messages
 client.on('message', (message) => {
   // Ignore message from other bots to prevent infinite loop.
   if (message.author.bot) {
+    return;
+  }
+
+  // If it is a direct message, only respond with pong.
+  if (message.channel instanceof Discord.DMChannel) {
+    pong(message);
     return;
   }
 
@@ -31,9 +46,19 @@ client.on('message', (message) => {
   // Tokenize the message.
   let tokens = message.content.trim().split(' ');
 
+  // Ignore if no tokens.
+  if (tokens.length < 1 || !tokens[0]) {
+    return;
+  }
+
   // Discard first token if it is the mention.
   if (tokens[0].trim() === `<@${client.user.id}>`) {
     tokens.shift();
+
+    // Ignore if no more tokens afterwards.
+    if (tokens.length < 1 || !tokens[0]) {
+      return;
+    }
   }
 
   // Discard prefix if it is used.
@@ -43,7 +68,7 @@ client.on('message', (message) => {
 
   // Respond to pings.
   if (tokens[0].trim() === 'ping') {
-    message.channel.send(`pong ${Math.round(client.ping)}ms`);
+    pong(message);
   }
 });
 
