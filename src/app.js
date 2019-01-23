@@ -45,6 +45,22 @@ client.on('message', async (message) => {
     return;
   }
 
+  // Disallow if author of message doesn't have permission to use bot.
+  if (!message.guild) {
+    return;
+  }
+
+  let member = message.guild.member(message.author);
+  if (!member) {
+    message.channel.send('❌ You do not have permission to do this.');
+    return;
+  }
+
+  if (!member.hasPermission(Discord.Permissions.FLAGS.ADMINISTRATOR)) {
+    message.channel.send('❌ You do not have permission to do this.');
+    return;
+  }
+
   // Tokenize the message.
   let tokens = message.content.trim().split(' ');
   tokens = _.map(tokens, _.trim);
